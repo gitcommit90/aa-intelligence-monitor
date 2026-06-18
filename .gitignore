@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# env / secrets
+.env
+.env.*
+
+# runtime caches & snapshots
+models-cache.json
+captures-history.json
+*.bak
+
+# graphify knowledge-graph artifacts (regenerated locally, not source)
+graphify-out/
+
+# OS noise
+.DS_Store
+
+# third-party API docs (not redistributable)
+apidocs
+
+# claude/agent workspace
+.claude/

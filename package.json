@@ -1,0 +1,22 @@
+{
+  "name": "aa-intelligence-monitor",
+  "version": "1.0.0",
+  "description": "Terminal-style dashboard for Artificial Analysis model rankings (Intelligence, Coding, Agentic).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "artificial-analysis",
+    "llm",
+    "rankings",
+    "dashboard",
+    "terminal-ui"
+  ],
+  "author": "tux",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
