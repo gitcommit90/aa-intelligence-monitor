@@ -80,6 +80,7 @@ async function refresh() {
       cacheFile,
       JSON.stringify({
         snapshot: currentSnapshot,
+        previousSnapshot,
         lastRefresh,
         tier: apiTier,
         intelligence_index_version: intelligenceVersion,
@@ -138,10 +139,11 @@ try {
   const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   if (cached.snapshot) {
     currentSnapshot = cached.snapshot;
+    previousSnapshot = cached.previousSnapshot || null;
     lastRefresh = cached.lastRefresh;
     apiTier = cached.tier || 'unknown';
     intelligenceVersion = cached.intelligence_index_version || null;
-    log(`Loaded cache | Tier: ${apiTier} | Index v${intelligenceVersion}`);
+    log(`Loaded cache | Tier: ${apiTier} | Index v${intelligenceVersion}${previousSnapshot ? ' | prev snapshot present' : ''}`);
   }
 } catch (e) {}
 

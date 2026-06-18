@@ -10,7 +10,7 @@ Built as a FOSS tool to explore Intelligence, Coding, and Agentic indices with l
 - **Three metric tabs**: Intelligence, Coding, Agentic
 - **Per-provider colors** (deterministic palette hashed from creator name)
 - **All three scores shown on every card** with current tab highlighted
-- **Movement indicators** (▲/▼ rank change since last refresh)
+- **Movement indicators** (▲/▼ rank change vs. the previous refresh, per metric)
 - **Pricing information** where available
 - **Responsive** (works great on mobile)
 - **CRT/phosphor terminal aesthetic** with boot sequence
