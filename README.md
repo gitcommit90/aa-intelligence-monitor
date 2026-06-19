@@ -4,6 +4,16 @@ A beautiful, real-time terminal-style dashboard for [Artificial Analysis](https:
 
 Built as a FOSS tool to explore Intelligence, Coding, and Agentic indices with live movement tracking, provider coloring, pricing, and more.
 
+## Screenshots
+
+**Intelligence index**
+
+![Intelligence index view](docs/img/intelligence.png)
+
+**Coding index**
+
+![Coding index view](docs/img/coding.png)
+
 ## Features
 
 - **Live auto-refresh** every 30 minutes
