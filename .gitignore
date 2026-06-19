@@ -21,3 +21,7 @@ apidocs
 
 # claude/agent workspace
 .claude/
+
+# demo recording tooling (local only)
+.demo-venv/
+.demo-rec/

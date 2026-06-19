@@ -4,6 +4,10 @@ A beautiful, real-time terminal-style dashboard for [Artificial Analysis](https:
 
 Built as a FOSS tool to explore Intelligence, Coding, and Agentic indices with live movement tracking, provider coloring, pricing, and more.
 
+## Demo
+
+![AA Intelligence Monitor demo](docs/img/demo.gif)
+
 ## Screenshots
 
 **Intelligence index**
