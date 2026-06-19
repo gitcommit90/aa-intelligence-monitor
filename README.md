@@ -33,15 +33,35 @@ Built as a FOSS tool to explore Intelligence, Coding, and Agentic indices with l
 
 ## How it works
 
-The server fetches the official Artificial Analysis language models API
-(`https://artificialanalysis.ai/api/v2/language/models/free`) with `AA_API_KEY`,
-uses the published `evaluations.artificial_analysis_*_index` fields for
-Intelligence, Coding, and Agentic tabs, and normalizes pricing. The latest snapshot
-is written to `models-cache.json` and reloaded on startup.
+The server fetches the official Artificial Analysis language models API:
+
+```http
+GET https://artificialanalysis.ai/api/v2/language/models/free?page=N
+x-api-key: $AA_API_KEY
+```
+
+`AA_API_KEY` is read from `process.env.AA_API_KEY`; do not hardcode API keys in
+source. The endpoint is paginated, so the server requests pages until the API
+reports no more results.
+
+Tab scores come directly from the official API response fields:
+
+- **Intelligence**: `evaluations.artificial_analysis_intelligence_index`
+- **Coding**: `evaluations.artificial_analysis_coding_index`
+- **Agentic**: `evaluations.artificial_analysis_agentic_index`
+
+The API currently returns `intelligence_index_version` (for example, `4.1`).
+Coding and Agentic are Artificial Analysis subsets and are not separately
+versioned by this app. The dashboard does not scrape the AA web UI for model or
+tab data, and it does not synthesize local/proxy fallback scores such as
+`livecodebench` for Coding or `ifbench`/`lcr`/`terminalbench`/`tau` for Agentic.
+
+Pricing and creator metadata are normalized for display. The latest snapshot is
+written to `models-cache.json` and reloaded on startup.
 
 ## Setup
 
-1. Clone this repo
+1. Clone this repo.
 2. Export `AA_API_KEY` and optionally override the port:
    ```env
    AA_API_KEY=...
@@ -52,13 +72,26 @@ is written to `models-cache.json` and reloaded on startup.
    node server.js
    ```
 
-Or use the systemd service file included.
+The server listens on `process.env.PORT || 1149`. It refreshes immediately on
+startup, then every 30 minutes, and serves the most recent cached snapshot while
+new refreshes are in progress.
+
+## Validation
+
+Run local checks before committing changes:
+
+```bash
+npm test
+node -c aa-source.js
+node -c server.js
+graphify update .
+```
 
 ## Tech
 
 - Node.js core `http` server (no Express, no third-party deps, no build step)
 - Pure HTML/CSS/JS frontend
-- Data source: official AA API (`/api/v2/language/models/free`) index fields
+- Data source: official paginated AA API (`/api/v2/language/models/free`) index fields
 
 ## Endpoints
 
