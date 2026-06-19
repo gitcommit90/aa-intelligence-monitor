@@ -69,7 +69,7 @@ async function refresh() {
   isRefreshing = true;
 
   try {
-    log('Refreshing from Artificial Analysis models page...');
+    log('Refreshing from Artificial Analysis language models API...');
     const fresh = await fetchFromAA();
 
     previousSnapshot = currentSnapshot;
@@ -174,5 +174,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, () => {
   log(`AA Rich Intelligence Index running on port ${port}`);
-  log('Using AA models page source • Auto-refresh every 30 minutes');
+  log('Using official AA API source • Auto-refresh every 30 minutes');
 });

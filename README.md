@@ -33,16 +33,18 @@ Built as a FOSS tool to explore Intelligence, Coding, and Agentic indices with l
 
 ## How it works
 
-No API key required. The server fetches the public Artificial Analysis models page
-(`https://artificialanalysis.ai/models`), extracts the embedded `defaultData` model
-array from the HTML, and normalizes it into intelligence/coding/agentic scores plus
-pricing. The latest snapshot is written to `models-cache.json` and reloaded on startup.
+The server fetches the official Artificial Analysis language models API
+(`https://artificialanalysis.ai/api/v2/language/models/free`) with `AA_API_KEY`,
+uses the published `evaluations.artificial_analysis_*_index` fields for
+Intelligence, Coding, and Agentic tabs, and normalizes pricing. The latest snapshot
+is written to `models-cache.json` and reloaded on startup.
 
 ## Setup
 
 1. Clone this repo
-2. (Optional) Create a `.env` file to override the port:
+2. Export `AA_API_KEY` and optionally override the port:
    ```env
+   AA_API_KEY=...
    PORT=1149
    ```
 3. Run it (no dependencies to install — uses only Node built-ins):
@@ -56,7 +58,7 @@ Or use the systemd service file included.
 
 - Node.js core `http` server (no Express, no third-party deps, no build step)
 - Pure HTML/CSS/JS frontend
-- Data source: scraped from the public AA models page (`/models`), not the API
+- Data source: official AA API (`/api/v2/language/models/free`) index fields
 
 ## Endpoints
 

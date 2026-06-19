@@ -1,4 +1,4 @@
-const AA_MODELS_URL = "https://artificialanalysis.ai/api/v2/data/llms/models";
+const AA_MODELS_URL = "https://artificialanalysis.ai/api/v2/language/models/free";
 const AA_MODELS_PAGE_URL = "https://artificialanalysis.ai/models";
 
 function numberOrNull(value) {
@@ -22,6 +22,10 @@ function buildCreator(raw) {
 }
 
 function buildPricing(raw) {
+  if (raw.pricing && typeof raw.pricing === "object") {
+    return { ...raw.pricing };
+  }
+
   const pricing = {};
   const set = (key, value) => {
     if (value !== undefined && value !== null) {
@@ -58,6 +62,7 @@ function normalizeModel(raw) {
     creator: model_creator?.name ?? null,
     model_creator,
     pricing: buildPricing(raw),
+    performance: raw.performance ? { ...raw.performance } : undefined,
     evaluations: buildEvaluations(raw),
   };
 }
@@ -69,10 +74,16 @@ function parseMonitorSnapshot(json, { intelligenceIndexVersion = null } = {}) {
   }
 
   return {
-    tier: "free",
-    intelligence_index_version: intelligenceIndexVersion,
+    tier: json.tier || "free",
+    intelligence_index_version: json.intelligence_index_version ?? intelligenceIndexVersion,
     models: rawModels.map(normalizeModel),
   };
+}
+
+function withPage(url, page) {
+  const next = new URL(url);
+  next.searchParams.set("page", String(page));
+  return next.toString();
 }
 
 function parseIntelligenceIndexVersion(html) {
@@ -118,28 +129,48 @@ async function fetchMonitorSnapshot({
     throw new Error("AA_API_KEY environment variable is missing");
   }
 
-  const res = await fetchImpl(url, {
-    headers: {
-      "x-api-key": apiKey,
-      "accept": "application/json",
-    },
-  });
+  const headers = {
+    "x-api-key": apiKey,
+    "accept": "application/json",
+  };
 
-  if (!res.ok) {
-    throw new Error(`AA API error: ${res.status}`);
+  const allModels = [];
+  let tier = "unknown";
+  let intelligenceIndexVersion = null;
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const res = await fetchImpl(withPage(url, page), { headers });
+
+    if (!res.ok) {
+      throw new Error(`AA API error: ${res.status}`);
+    }
+
+    const json = await res.json();
+    const rawModels = json.data || json;
+    if (!Array.isArray(rawModels)) {
+      throw new Error("API response data is not an array");
+    }
+
+    allModels.push(...rawModels);
+    tier = json.tier || res.headers?.get?.("x-aa-tier") || tier;
+    intelligenceIndexVersion = json.intelligence_index_version ?? intelligenceIndexVersion;
+
+    hasMore = Boolean(json.pagination?.has_more);
+    page += 1;
   }
 
-  const json = await res.json();
-  let intelligenceIndexVersion = null;
-  try {
-    intelligenceIndexVersion = await fetchIntelligenceIndexVersion({ url: versionUrl, fetchImpl });
-  } catch (err) {
-    // The v2 API does not expose the index version. Keep model data from the API
-    // even if the page-only metadata request fails, but do not hardcode a false version.
+  if (intelligenceIndexVersion === null) {
+    try {
+      intelligenceIndexVersion = await fetchIntelligenceIndexVersion({ url: versionUrl, fetchImpl });
+    } catch (err) {
+      // Keep official API model data even if page-only metadata is unavailable.
+    }
   }
 
   return {
-    ...parseMonitorSnapshot(json, { intelligenceIndexVersion }),
+    ...parseMonitorSnapshot({ tier, intelligence_index_version: intelligenceIndexVersion, data: allModels }),
     updatedAt: new Date().toISOString(),
   };
 }

@@ -586,15 +586,8 @@
 
     function getScore(model, field) {
       const evals = model.evaluations || {};
-      if (evals[field] !== undefined) return evals[field];
-      if (field === 'artificial_analysis_agentic_index') {
-        const subs = ['ifbench', 'lcr', 'terminalbench_hard', 'tau2'];
-        const values = subs.map(k => evals[k]).filter(v => typeof v === 'number' && isFinite(v));
-        if (values.length) {
-          const avg = values.reduce((a, b) => a + b, 0) / values.length;
-          return avg <= 1 ? avg * 100 : avg;
-        }
-      }
+      const value = evals[field];
+      if (value !== undefined && value !== null) return value;
       return null;
     }
 
