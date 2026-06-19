@@ -36,13 +36,21 @@ function buildPricing(raw) {
   return Object.keys(pricing).length ? pricing : undefined;
 }
 
+function scaledPercentOrNull(value) {
+  const numeric = numberOrNull(value);
+  if (numeric === null) return null;
+  return numeric <= 1 ? numeric * 100 : numeric;
+}
+
 function buildEvaluations(raw) {
   const evals = raw.evaluations || raw;
-  return {
-    artificial_analysis_intelligence_index: numberOrNull(evals.artificial_analysis_intelligence_index ?? evals.intelligence_index),
-    artificial_analysis_coding_index: numberOrNull(evals.artificial_analysis_coding_index ?? evals.coding_index),
-    artificial_analysis_agentic_index: numberOrNull(evals.artificial_analysis_agentic_index ?? evals.agentic_index),
-  };
+  const ret = { ...evals };
+
+  if (ret.artificial_analysis_coding_index === undefined || ret.artificial_analysis_coding_index === null) {
+    ret.artificial_analysis_coding_index = scaledPercentOrNull(evals.coding_index ?? evals.livecodebench);
+  }
+
+  return ret;
 }
 
 function normalizeModel(raw) {
@@ -108,6 +116,7 @@ module.exports = {
   buildCreator,
   buildEvaluations,
   buildPricing,
+  scaledPercentOrNull,
   fetchMonitorSnapshot,
   normalizeModel,
   parseMonitorSnapshot,
