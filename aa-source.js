@@ -1,96 +1,11 @@
-const AA_MODELS_URL = "https://artificialanalysis.ai/models";
+const AA_MODELS_URL = "https://artificialanalysis.ai/api/v2/data/llms/models";
 
 function numberOrNull(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function decodeEscapedJson(rawText) {
-  const text = String(rawText ?? "");
-
-  try {
-    return JSON.parse(text);
-  } catch {}
-
-  let normalized = text;
-  for (let i = 0; i < 3; i += 1) {
-    const next = normalized
-      .replace(/\\\\/g, '\\')
-      .replace(/\\"/g, '"');
-    if (next === normalized) break;
-    normalized = next;
-    try {
-      return JSON.parse(normalized);
-    } catch {}
-  }
-
-  const jsonText = JSON.parse(
-    `"${text
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"')
-      .replace(/\r/g, "\\r")
-      .replace(/\n/g, "\\n")}"`,
-  );
-  return JSON.parse(jsonText);
-}
-
-function extractEscapedDefaultDataArray(html) {
-  const marker = "defaultData";
-  const markerIdx = html.indexOf(marker);
-  if (markerIdx === -1) {
-    throw new Error("defaultData marker not found");
-  }
-
-  const start = html.indexOf("[", markerIdx);
-  if (start === -1) {
-    throw new Error("defaultData array start not found");
-  }
-
-  let depth = 0;
-  let inString = false;
-  let end = -1;
-
-  for (let i = start; i < html.length; i += 1) {
-    const ch = html[i];
-
-    if (ch === '"') {
-      let backslashes = 0;
-      for (let j = i - 1; j >= 0 && html[j] === "\\"; j -= 1) {
-        backslashes += 1;
-      }
-      if (backslashes % 2 === 1) {
-        inString = !inString;
-      }
-    }
-
-    if (inString) {
-      continue;
-    }
-
-    if (ch === "[") {
-      depth += 1;
-    } else if (ch === "]") {
-      depth -= 1;
-      if (depth === 0) {
-        end = i;
-        break;
-      }
-    }
-  }
-
-  if (end === -1) {
-    throw new Error("defaultData array end not found");
-  }
-
-  return html.slice(start, end + 1);
-}
-
-function extractIndexVersion(html) {
-  const match = html.match(/Artificial Analysis Intelligence Index v([0-9]+(?:\.[0-9]+)*)/i);
-  return match ? match[1] : null;
-}
-
 function buildCreator(raw) {
-  const creator = raw.model_creators;
+  const creator = raw.model_creator || raw.model_creators;
   if (!creator || typeof creator !== "object") {
     return undefined;
   }
@@ -122,10 +37,11 @@ function buildPricing(raw) {
 }
 
 function buildEvaluations(raw) {
+  const evals = raw.evaluations || raw;
   return {
-    artificial_analysis_intelligence_index: numberOrNull(raw.intelligence_index),
-    artificial_analysis_coding_index: numberOrNull(raw.coding_index),
-    artificial_analysis_agentic_index: numberOrNull(raw.agentic_index),
+    artificial_analysis_intelligence_index: numberOrNull(evals.artificial_analysis_intelligence_index ?? evals.intelligence_index),
+    artificial_analysis_coding_index: numberOrNull(evals.artificial_analysis_coding_index ?? evals.coding_index),
+    artificial_analysis_agentic_index: numberOrNull(evals.artificial_analysis_agentic_index ?? evals.agentic_index),
   };
 }
 
@@ -143,15 +59,15 @@ function normalizeModel(raw) {
   };
 }
 
-function parseMonitorSnapshot(html) {
-  const rawModels = decodeEscapedJson(extractEscapedDefaultDataArray(html));
+function parseMonitorSnapshot(json) {
+  const rawModels = json.data || json;
   if (!Array.isArray(rawModels)) {
-    throw new Error("defaultData is not an array");
+    throw new Error("API response data is not an array");
   }
 
   return {
     tier: "free",
-    intelligence_index_version: extractIndexVersion(html),
+    intelligence_index_version: "2.0", // Fallback version as API v2 doesn't expose it directly
     models: rawModels.map(normalizeModel),
   };
 }
@@ -164,20 +80,25 @@ async function fetchMonitorSnapshot({
     throw new Error("fetch is not available in this runtime");
   }
 
+  const apiKey = process.env.AA_API_KEY;
+  if (!apiKey) {
+    throw new Error("AA_API_KEY environment variable is missing");
+  }
+
   const res = await fetchImpl(url, {
     headers: {
-      "user-agent": "Mozilla/5.0",
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "x-api-key": apiKey,
+      "accept": "application/json",
     },
   });
 
   if (!res.ok) {
-    throw new Error(`AA models page error: ${res.status}`);
+    throw new Error(`AA API error: ${res.status}`);
   }
 
-  const html = await res.text();
+  const json = await res.json();
   return {
-    ...parseMonitorSnapshot(html),
+    ...parseMonitorSnapshot(json),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -187,9 +108,6 @@ module.exports = {
   buildCreator,
   buildEvaluations,
   buildPricing,
-  decodeEscapedJson,
-  extractEscapedDefaultDataArray,
-  extractIndexVersion,
   fetchMonitorSnapshot,
   normalizeModel,
   parseMonitorSnapshot,
