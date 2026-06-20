@@ -2,11 +2,15 @@
 
 A beautiful, real-time terminal-style dashboard for [Artificial Analysis](https://artificialanalysis.ai/) model rankings.
 
+**Live:** [https://aa.rerouted.dev](https://aa.rerouted.dev)
+
 Built as a FOSS tool to explore Intelligence, Coding, and Agentic indices with live movement tracking, provider coloring, pricing, and more.
 
 ## Demo
 
 ![AA Intelligence Monitor demo](docs/img/demo.gif)
+
+Open the [live dashboard](https://aa.rerouted.dev) for the current rankings.
 
 ## Screenshots
 

@@ -5,6 +5,7 @@ const path = require('path');
 const { fetchMonitorSnapshot } = require('./aa-source');
 
 const port = Number(process.env.PORT || 1149);
+const host = process.env.HOST || '127.0.0.1';
 const cacheFile = path.join(__dirname, 'models-cache.json');
 
 let currentSnapshot = null;
@@ -172,7 +173,7 @@ const server = http.createServer((req, res) => {
   res.end('Not found');
 });
 
-server.listen(port, () => {
-  log(`AA Rich Intelligence Index running on port ${port}`);
+server.listen(port, host, () => {
+  log(`AA Rich Intelligence Index running on http://${host}:${port}`);
   log('Using official AA API source • Auto-refresh every 30 minutes');
 });

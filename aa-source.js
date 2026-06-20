@@ -86,6 +86,61 @@ function withPage(url, page) {
   return next.toString();
 }
 
+/** @returns {{ label: string, key: string }[]} */
+function getAaApiKeyCandidates() {
+  const entries = [
+    ["AA_API_KEY", process.env.AA_API_KEY],
+    ["AA_FALLBACK_API_KEY", process.env.AA_FALLBACK_API_KEY],
+    ["AA_FINAL_FALLBACK_API_KEY", process.env.AA_FINAL_FALLBACK_API_KEY],
+  ];
+  const seen = new Set();
+  const out = [];
+  for (const [label, value] of entries) {
+    const key = typeof value === "string" ? value.trim() : "";
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label, key });
+  }
+  return out;
+}
+
+async function fetchWithAaApiKeys(url, { fetchImpl, extraHeaders = {} } = {}) {
+  const candidates = getAaApiKeyCandidates();
+  if (!candidates.length) {
+    throw new Error(
+      "AA API key environment variable is missing (AA_API_KEY or fallbacks)",
+    );
+  }
+
+  let lastStatus = null;
+  for (let i = 0; i < candidates.length; i += 1) {
+    const { label, key } = candidates[i];
+    const res = await fetchImpl(url, {
+      headers: {
+        ...extraHeaders,
+        "x-api-key": key,
+        accept: "application/json",
+      },
+    });
+
+    if (res.ok) {
+      return res;
+    }
+
+    lastStatus = res.status;
+    if (res.status === 429 && i < candidates.length - 1) {
+      console.log(
+        `[aa-source] AA API rate limited (429) on key ${label}; trying next key`,
+      );
+      continue;
+    }
+
+    throw new Error(`AA API error: ${res.status}`);
+  }
+
+  throw new Error(`AA API error: ${lastStatus ?? "unknown"}`);
+}
+
 function parseIntelligenceIndexVersion(html) {
   if (typeof html !== "string") return null;
 
@@ -124,16 +179,6 @@ async function fetchMonitorSnapshot({
     throw new Error("fetch is not available in this runtime");
   }
 
-  const apiKey = process.env.AA_API_KEY;
-  if (!apiKey) {
-    throw new Error("AA_API_KEY environment variable is missing");
-  }
-
-  const headers = {
-    "x-api-key": apiKey,
-    "accept": "application/json",
-  };
-
   const allModels = [];
   let tier = "unknown";
   let intelligenceIndexVersion = null;
@@ -141,11 +186,7 @@ async function fetchMonitorSnapshot({
   let hasMore = true;
 
   while (hasMore) {
-    const res = await fetchImpl(withPage(url, page), { headers });
-
-    if (!res.ok) {
-      throw new Error(`AA API error: ${res.status}`);
-    }
+    const res = await fetchWithAaApiKeys(withPage(url, page), { fetchImpl });
 
     const json = await res.json();
     const rawModels = json.data || json;
@@ -182,6 +223,8 @@ module.exports = {
   buildEvaluations,
   buildPricing,
   fetchIntelligenceIndexVersion,
+  fetchWithAaApiKeys,
+  getAaApiKeyCandidates,
   scaledPercentOrNull,
   fetchMonitorSnapshot,
   normalizeModel,
