@@ -1,10 +1,8 @@
 # AA Intelligence Monitor
 
-A beautiful, real-time terminal-style dashboard for [Artificial Analysis](https://artificialanalysis.ai/) model rankings.
+A real-time dashboard for [Artificial Analysis](https://artificialanalysis.ai/) model rankings — Intelligence, Coding, and Agentic indices with movement tracking, provider coloring, and pricing.
 
 **Live:** [https://aa.rerouted.dev](https://aa.rerouted.dev)
-
-Built as a FOSS tool to explore Intelligence, Coding, and Agentic indices with live movement tracking, provider coloring, pricing, and more.
 
 ## Demo
 
@@ -24,16 +22,22 @@ Open the [live dashboard](https://aa.rerouted.dev) for the current rankings.
 
 ## Features
 
-- **Live auto-refresh** every 30 minutes
-- **Three metric tabs**: Intelligence, Coding, Agentic
-- **Per-provider colors** (deterministic palette hashed from creator name)
-- **All three scores shown on every card** with current tab highlighted
-- **Movement indicators** (▲/▼ rank change vs. the previous refresh, per metric)
-- **Pricing information** where available
-- **Responsive** (works great on mobile)
-- **CRT/phosphor terminal aesthetic** with boot sequence
-- **Search** that preserves original global rankings
-- **Disk-backed cache** so data survives restarts
+- **Live auto-refresh** — server syncs every 30 minutes; the UI polls `/api/models` every 2 minutes
+- **Three metric tabs** — Intelligence, Coding, Agentic (keyboard `1` / `2` / `3`)
+- **Mission-control layout** — telemetry rail, top-3 podium, score distribution, and biggest movers
+- **Grid and list views** — toggle with toolbar buttons or `g` / `l`
+- **Sort options** — rank, name, price, speed, latency, release date, movement
+- **Per-provider colors** — deterministic palette hashed from creator name; filter via legend, chips, or sidebar
+- **All three scores on every card** — current tab highlighted; circular gauge for active metric
+- **Movement indicators** — ▲/▼ rank change vs. the previous server refresh, per metric
+- **Pricing and throughput** — input/output $/M tokens, tokens/s, latency where available
+- **Search** — filter models and providers (`/` to focus); preserves original global rankings
+- **Boot sequence** — skippable typed startup overlay (any key or click)
+- **CRT polish** — scanlines, vignette flicker, animated grid background (JetBrains Mono UI + VT323 display type)
+- **Status chrome** — UTC mission clock, LIVE/SYNC badge, tier badge, refresh countdown ring, system ticker
+- **Infinite scroll** — batched card rendering with intersection observer
+- **Responsive** — three-column deck collapses on tablet/mobile; right rail hides on narrower viewports
+- **Disk-backed cache** — `models-cache.json` survives restarts
 
 ## How it works
 
@@ -94,7 +98,7 @@ graphify update .
 ## Tech
 
 - Node.js core `http` server (no Express, no third-party deps, no build step)
-- Pure HTML/CSS/JS frontend
+- Single-file HTML/CSS/JS frontend (`index.html`) — JetBrains Mono for UI, VT323 for headings and numeric display
 - Data source: official paginated AA API (`/api/v2/language/models/free`) index fields
 
 ## Endpoints

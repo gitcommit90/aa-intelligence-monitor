@@ -1,7 +1,7 @@
 {
   "name": "aa-intelligence-monitor",
   "version": "1.0.0",
-  "description": "Terminal-style dashboard for Artificial Analysis model rankings (Intelligence, Coding, Agentic).",
+  "description": "Real-time mission-control dashboard for Artificial Analysis model rankings (Intelligence, Coding, Agentic).",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
