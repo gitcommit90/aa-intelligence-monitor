@@ -149,6 +149,91 @@ function parseIntelligenceIndexVersion(html) {
   return match ? match[1] : null;
 }
 
+function createOpenWeightsIndex() {
+  return { byId: new Map(), bySlug: new Map(), byName: new Map() };
+}
+
+function addOpenWeightsEntry(index, entry) {
+  if (!entry || typeof entry !== "object" || typeof entry.is_open_weights !== "boolean") {
+    return;
+  }
+
+  const value = {
+    is_open_weights: entry.is_open_weights,
+    license_name: entry.license_name ?? null,
+    license_url: entry.license_url ?? null,
+    model_weights_source_url: entry.model_weights_source_url ?? null,
+  };
+
+  if (typeof entry.id === "string" && entry.id) index.byId.set(entry.id, value);
+  if (typeof entry.slug === "string" && entry.slug) index.bySlug.set(entry.slug, value);
+  if (typeof entry.name === "string" && entry.name) index.byName.set(entry.name.toLowerCase(), value);
+}
+
+function parseOpenWeightsIndex(html) {
+  const index = createOpenWeightsIndex();
+  if (typeof html !== "string" || !html.includes("is_open_weights")) return index;
+
+  const decoded = html.replace(/\\"/g, '"').replace(/\\n/g, " ");
+  const regex = /"is_open_weights"\s*:\s*(true|false)/g;
+  for (const match of decoded.matchAll(regex)) {
+    const before = decoded.slice(Math.max(0, match.index - 3000), match.index);
+    const after = decoded.slice(match.index, Math.min(decoded.length, match.index + 1200));
+    const lastValue = (source, key) => {
+      const matches = [...source.matchAll(new RegExp(`"${key}"\\s*:\\s*"([^"\\\\]+)"`, "g"))];
+      return matches.length ? matches.at(-1)[1] : null;
+    };
+    const firstValue = (source, key) => {
+      const found = source.match(new RegExp(`"${key}"\\s*:\\s*"([^"\\\\]+)"`));
+      return found ? found[1] : null;
+    };
+
+    addOpenWeightsEntry(index, {
+      id: lastValue(before, "id"),
+      slug: lastValue(before, "slug"),
+      name: lastValue(before, "name"),
+      is_open_weights: match[1] === "true",
+      license_name: firstValue(after, "license_name"),
+      license_url: firstValue(after, "license_url"),
+      model_weights_source_url: firstValue(after, "model_weights_source_url"),
+    });
+  }
+
+  return index;
+}
+
+function enrichModelsWithOpenWeights(models, index) {
+  const safeIndex = index || createOpenWeightsIndex();
+  return models.map((model) => {
+    const hit = (model.slug && safeIndex.bySlug.get(model.slug))
+      || (model.id && safeIndex.byId.get(model.id))
+      || (model.name && safeIndex.byName.get(String(model.name).toLowerCase()))
+      || null;
+
+    return {
+      ...model,
+      is_open_weights: hit ? hit.is_open_weights : null,
+      license_name: hit?.license_name ?? null,
+      license_url: hit?.license_url ?? null,
+      model_weights_source_url: hit?.model_weights_source_url ?? null,
+    };
+  });
+}
+
+async function fetchOpenWeightsIndex({ url = AA_MODELS_PAGE_URL, fetchImpl = globalThis.fetch } = {}) {
+  const res = await fetchImpl(url, {
+    headers: {
+      "accept": "text/html,application/xhtml+xml",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`AA models page error: ${res.status}`);
+  }
+
+  return parseOpenWeightsIndex(await res.text());
+}
+
 async function fetchIntelligenceIndexVersion({
   url = AA_MODELS_PAGE_URL,
   fetchImpl = globalThis.fetch,
@@ -182,6 +267,7 @@ async function fetchMonitorSnapshot({
   const allModels = [];
   let tier = "unknown";
   let intelligenceIndexVersion = null;
+  let openWeightsIndex = createOpenWeightsIndex();
   let page = 1;
   let hasMore = true;
 
@@ -210,8 +296,17 @@ async function fetchMonitorSnapshot({
     }
   }
 
+  try {
+    openWeightsIndex = await fetchOpenWeightsIndex({ url: versionUrl, fetchImpl });
+  } catch (err) {
+    // Keep official API model data even if public-page open-weights metadata is unavailable.
+  }
+
+  const snapshot = parseMonitorSnapshot({ tier, intelligence_index_version: intelligenceIndexVersion, data: allModels });
+
   return {
-    ...parseMonitorSnapshot({ tier, intelligence_index_version: intelligenceIndexVersion, data: allModels }),
+    ...snapshot,
+    models: enrichModelsWithOpenWeights(snapshot.models, openWeightsIndex),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -222,7 +317,9 @@ module.exports = {
   buildCreator,
   buildEvaluations,
   buildPricing,
+  enrichModelsWithOpenWeights,
   fetchIntelligenceIndexVersion,
+  fetchOpenWeightsIndex,
   fetchWithAaApiKeys,
   getAaApiKeyCandidates,
   scaledPercentOrNull,
@@ -230,4 +327,5 @@ module.exports = {
   normalizeModel,
   parseIntelligenceIndexVersion,
   parseMonitorSnapshot,
+  parseOpenWeightsIndex,
 };

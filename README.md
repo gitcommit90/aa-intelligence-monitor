@@ -27,6 +27,7 @@ Open the [live dashboard](https://aa.rerouted.dev) for the current rankings.
 - **Mission-control layout** — telemetry rail, top-3 podium, score distribution, and biggest movers
 - **Grid and list views** — toggle with toolbar buttons or `g` / `l`
 - **Sort options** — rank, name, price, speed, latency, release date, movement
+- **Open/proprietary global filter** — top-level Both/Open/Proprietary toggle filters the entire dashboard
 - **Per-provider colors** — deterministic palette hashed from creator name; filter via legend, chips, or sidebar
 - **All three scores on every card** — current tab highlighted; circular gauge for active metric
 - **Movement indicators** — ▲/▼ rank change vs. the previous server refresh, per metric
@@ -60,9 +61,15 @@ Tab scores come directly from the official API response fields:
 
 The API currently returns `intelligence_index_version` (for example, `4.1`).
 Coding and Agentic are Artificial Analysis subsets and are not separately
-versioned by this app. The dashboard does not scrape the AA web UI for model or
-tab data, and it does not synthesize local/proxy fallback scores such as
-`livecodebench` for Coding or `ifbench`/`lcr`/`terminalbench`/`tau` for Agentic.
+versioned by this app. The dashboard does not synthesize local/proxy fallback
+scores such as `livecodebench` for Coding or
+`ifbench`/`lcr`/`terminalbench`/`tau` for Agentic.
+
+Open/proprietary filtering is powered by AA's public models page metadata. The
+server parses the public page for `is_open_weights` and joins that classification
+onto the official API records by model ID. If that metadata is unavailable, the
+app still serves the official API snapshot and treats open/proprietary status as
+unknown.
 
 Pricing and creator metadata are normalized for display. The latest snapshot is
 written to `models-cache.json` and reloaded on startup.

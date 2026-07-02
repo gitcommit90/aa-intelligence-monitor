@@ -4,9 +4,11 @@ const assert = require('node:assert/strict');
 const {
   AA_MODELS_URL,
   buildEvaluations,
+  enrichModelsWithOpenWeights,
   fetchMonitorSnapshot,
   parseIntelligenceIndexVersion,
   parseMonitorSnapshot,
+  parseOpenWeightsIndex,
   scaledPercentOrNull,
 } = require('../aa-source');
 
@@ -84,7 +86,15 @@ test('fetchMonitorSnapshot calls official AA language models free API with x-api
     const snapshot = await fetchMonitorSnapshot({
       fetchImpl: async (url, options) => {
         calls.push({ url, options });
-        const page = new URL(url).searchParams.get('page');
+        const parsedUrl = new URL(url);
+        if (parsedUrl.pathname === '/models') {
+          return {
+            ok: true,
+            text: async () => 'self.__next_f.push([1,"{\\\"slug\\\":\\\"m1\\\",\\\"is_open_weights\\\":true}{\\\"slug\\\":\\\"m2\\\",\\\"is_open_weights\\\":false}"])',
+          };
+        }
+
+        const page = parsedUrl.searchParams.get('page');
         return {
           ok: true,
           headers: { get: (name) => (name.toLowerCase() === 'x-aa-tier' ? 'free' : null) },
@@ -96,6 +106,7 @@ test('fetchMonitorSnapshot calls official AA language models free API with x-api
               {
                 id: `m${page}`,
                 name: `Model ${page}`,
+                slug: `m${page}`,
                 evaluations: {
                   artificial_analysis_intelligence_index: Number(page),
                   artificial_analysis_coding_index: Number(page),
@@ -114,15 +125,51 @@ test('fetchMonitorSnapshot calls official AA language models free API with x-api
     assert.equal(calls[0].options.headers['x-api-key'], 'test-key');
     assert.match(calls[0].options.headers.accept, /application\/json/);
     assert.equal(new URL(calls[1].url).searchParams.get('page'), '2');
+    assert.equal(calls.some((call) => String(call.url).includes('/models')), true);
     assert.equal(snapshot.tier, 'free');
     assert.equal(snapshot.intelligence_index_version, 4.1);
     assert.equal(snapshot.models.length, 2);
+    assert.equal(snapshot.models[0].is_open_weights, true);
+    assert.equal(snapshot.models[1].is_open_weights, false);
     assert.equal(snapshot.models[1].evaluations.artificial_analysis_agentic_index, 2);
     assert.deepEqual(snapshot.models[0].pricing, { price_1m_input_tokens: 1, price_1m_output_tokens: 2 });
   } finally {
     if (oldKey === undefined) delete process.env.AA_API_KEY;
     else process.env.AA_API_KEY = oldKey;
   }
+});
+
+test('parseOpenWeightsIndex extracts open and proprietary flags from AA page payload', () => {
+  const html = `
+    <script>self.__next_f.push([1,"{\\"id\\":\\"open-id\\",\\"slug\\":\\"open-model\\",\\"name\\":\\"Open Model\\",\\"is_open_weights\\":true,\\"license_name\\":\\"Apache 2.0\\"}"])</script>
+    <script>self.__next_f.push([1,"{\\"id\\":\\"closed-id\\",\\"slug\\":\\"closed-model\\",\\"name\\":\\"Closed Model\\",\\"is_open_weights\\":false}"])</script>
+  `;
+
+  const index = parseOpenWeightsIndex(html);
+
+  assert.equal(index.bySlug.get('open-model').is_open_weights, true);
+  assert.equal(index.bySlug.get('open-model').license_name, 'Apache 2.0');
+  assert.equal(index.bySlug.get('closed-model').is_open_weights, false);
+  assert.equal(index.byId.get('closed-id').is_open_weights, false);
+});
+
+test('enrichModelsWithOpenWeights joins classifications by slug then id', () => {
+  const index = {
+    bySlug: new Map([['slug-hit', { is_open_weights: true, license_name: 'MIT' }]]),
+    byId: new Map([['id-hit', { is_open_weights: false, license_name: null }]]),
+    byName: new Map(),
+  };
+
+  const enriched = enrichModelsWithOpenWeights([
+    { id: 'a', slug: 'slug-hit', name: 'Slug Hit' },
+    { id: 'id-hit', slug: 'missing', name: 'ID Hit' },
+    { id: 'unknown', slug: 'unknown', name: 'Unknown' },
+  ], index);
+
+  assert.equal(enriched[0].is_open_weights, true);
+  assert.equal(enriched[0].license_name, 'MIT');
+  assert.equal(enriched[1].is_open_weights, false);
+  assert.equal(enriched[2].is_open_weights, null);
 });
 
 test('official index populations do not include local proxy-only models', () => {
